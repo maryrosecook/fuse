@@ -11,35 +11,28 @@ class Player {
   update () {
     this.handleMovement();
     this.handleHolding();
+    this.handleAttaching();
     this.handleMessagingBlockHolding();
   }
 
   handleMovement () {
-    const MOVEMENT_SPEED = 1;
-
-    let vector = { x: 0, y: 0 };
-
     const inputter = this.game.c.inputter;
     if (inputter.isDown(inputter.UP_ARROW)) {
-      vector.y = -MOVEMENT_SPEED;
+      const vector = Maths.vectorMultiply(Maths.angleToVector(this.angle), 1);
+
+      [this].concat(this.holding ? this.holding : []).forEach(body => {
+        body.center.x += vector.x;
+        body.center.y += vector.y;
+      });
     }
 
-    if (inputter.isDown(inputter.DOWN_ARROW)) {
-      vector.y = MOVEMENT_SPEED;
+    if (inputter.isDown(inputter.LEFT_ARROW)) {
+      this.angle -= 3;
     }
 
-    if (!this.isHolding() &&
-        inputter.isDown(inputter.LEFT_ARROW)) {
-      vector.x = -MOVEMENT_SPEED;
+    if (inputter.isDown(inputter.RIGHT_ARROW)) {
+      this.angle += 3;
     }
-
-    if (!this.isHolding() &&
-        inputter.isDown(inputter.RIGHT_ARROW)) {
-      vector.x = MOVEMENT_SPEED;
-    }
-
-    this.center.x += vector.x;
-    this.center.y += vector.y;
   }
 
   handleHolding () {
@@ -49,15 +42,30 @@ class Player {
     }
   }
 
+  handleAttaching () {
+    const inputter = this.game.c.inputter;
+    if (inputter.isPressed(inputter.TWO)) {
+      this.toggleAttaching();
+    }
+  }
+
   toggleHolding () {
     if (this.holding) {
-      this.holding.toggleHolding(this);
+      this.holding.toggleAttached(this);
       this.holding = undefined;
     } else {
-      let nearestBlock = this.nearestBlock();
-      nearestBlock.toggleHolding(this);
+      let nearestBlock = this.nearestBlock(this);
+      nearestBlock.toggleAttached(this);
       this.holding = nearestBlock;
     }
+  }
+
+  toggleAttaching () {
+    if (!this.isHolding()) {
+      return;
+    }
+
+    this.holding.toggleAttached(this.nearestBlock(this.holding));
   }
 
   isHolding () {
@@ -75,21 +83,22 @@ class Player {
       this.holding.message(inputter.THREE);
     }
 
-    if (inputter.isDown(inputter.LEFT_ARROW)) {
-      this.holding.message(inputter.LEFT_ARROW);
+    if (inputter.isDown(inputter.FOUR)) {
+      this.holding.message(inputter.FOUR);
     }
 
-    if (inputter.isDown(inputter.RIGHT_ARROW)) {
-      this.holding.message(inputter.RIGHT_ARROW);
+    if (inputter.isDown(inputter.FIVE)) {
+      this.holding.message(inputter.FIVE);
     }
   }
 
-  nearestBlock () {
-    return this.game.block;
-  }
-
-  collision (other) {
-
+  nearestBlock (block) {
+    return this.game.c.entities.all(Block)
+      .filter(other => block !== other)
+      .sort((a, b) => {
+        return Maths.distance(a.center, block.center) -
+          Maths.distance(b.center, block.center);
+      })[0];
   }
 
   draw (ctx) {
@@ -99,15 +108,12 @@ class Player {
                  this.size.x,
                  this.size.y);
 
-    if (this.isHolding()) {
-      ctx.restore();
-      ctx.strokeStyle = "#fa0";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(this.center.x, this.center.y);
-      ctx.lineTo(this.holding.center.x, this.holding.center.y);
-      ctx.closePath();
-      ctx.stroke();
-    }
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(this.center.x, this.center.y);
+    ctx.lineTo(this.center.x, this.center.y - this.size.y / 2);
+    ctx.closePath();
+    ctx.stroke();
   }
 };

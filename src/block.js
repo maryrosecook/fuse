@@ -39,7 +39,7 @@ class Block {
 
   }
 
-  toggleHolding(body) {
+  toggleAttached(body) {
     if (!this.attached.includes(body)) {
       this.attached.push(body);
     } else {
@@ -54,11 +54,11 @@ class Block {
       this.on = !this.on;
     }
 
-    if (key === inputter.LEFT_ARROW) {
+    if (key === inputter.FOUR) {
       this.angle -= 1;
     }
 
-    if (key === inputter.RIGHT_ARROW) {
+    if (key === inputter.FIVE) {
       this.angle += 1;
     }
   }
@@ -69,5 +69,26 @@ class Block {
                  this.center.y - this.size.y / 2,
                  this.size.x,
                  this.size.y);
+
+    // draw orientation line
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(this.center.x, this.center.y);
+    ctx.lineTo(this.center.x, this.center.y - this.size.y / 2);
+    ctx.closePath();
+    ctx.stroke();
+
+    // draw attachment lines
+    this.attached.forEach(block => {
+      ctx.restore();
+      ctx.strokeStyle = "#fa0";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(this.center.x, this.center.y);
+      ctx.lineTo(block.center.x, block.center.y);
+      ctx.closePath();
+      ctx.stroke();
+    });
   }
 };
