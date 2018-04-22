@@ -3,20 +3,44 @@ class Block {
     this.game = game;
     this.color = "#fff";
     this.zindex = 0;
-    this.body = game.physics.createSingleShapeBody(this, {
-      shape: "rectangle",
-      center: settings.center,
-      size: { x: 20, y: 20 },
-      density: 0.4,
-      fixedRotation: false
-    });
+    this.angle = 180;
+    this.center = Maths.copyPoint(settings.center);
+    this.size = { x: 20, y: 20 };
+
+    this.attached = [];
   }
 
   update () {
-    this.body.update();
+    this.updateEngine();
+  }
 
-    const DRAG_RATIO = 0.1;
-    this.body.drag(DRAG_RATIO);
+  updateEngine () {
+    if (this.attached.length > 0) {
+      const vector = Maths.vectorMultiply(Maths.angleToVector(this.angle), 2);
+
+      [this].concat(this.attached).forEach(body => {
+        body.center.x += vector.x;
+        body.center.y += vector.y;
+      });
+    }
+  }
+
+  toggleAttach(body) {
+    if (!this.attached.includes(body)) {
+      this.attached.push(body);
+    } else {
+      this.attached.splice(this.attached.indexOf(body), 1);
+    }
+  }
+
+  message (key) {
+    const inputter = this.game.c.inputter;
+
+    if (key === inputter.LEFT_ARROW) {
+      this.angle -= 1;
+    } else if (key === inputter.RIGHT_ARROW) {
+      this.angle += 1;
+    }
   }
 
   draw (ctx) {

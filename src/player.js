@@ -4,39 +4,87 @@ class Player {
     this.color = "#f07";
     this.zindex = 0;
     this.angle = 180;
-    this.body = game.physics.createSingleShapeBody(this, {
-      shape: "rectangle",
-      center: settings.center,
-      size: { x: 20, y: 20 },
-      density: 0.4,
-      fixedRotation: false
-    });
+    this.center = Maths.copyPoint(settings.center);
+    this.size = { x: 20, y: 20 };
   }
 
   update () {
-    this.body.update();
+    this.handleMovement();
+    this.handleAttaching();
+    this.handleMessagingAttachedBlocks();
+  }
 
-    const MOVEMENT_SPEED = 0.001;
-    const DRAG_RATIO = 0.1;
+  handleMovement () {
+    const MOVEMENT_SPEED = 1;
+
+    let vector = { x: 0, y: 0 };
 
     const inputter = this.game.c.inputter;
     if (inputter.isDown(inputter.UP_ARROW)) {
-      this.body.push({ x: 0, y: -MOVEMENT_SPEED });
+      vector.y = -MOVEMENT_SPEED;
     }
 
     if (inputter.isDown(inputter.DOWN_ARROW)) {
-      this.body.push({ x: 0, y: MOVEMENT_SPEED });
+      vector.y = MOVEMENT_SPEED;
     }
 
+    if (!this.isAttached() &&
+        inputter.isDown(inputter.LEFT_ARROW)) {
+      vector.x = -MOVEMENT_SPEED;
+    }
+
+    if (!this.isAttached() &&
+        inputter.isDown(inputter.RIGHT_ARROW)) {
+      vector.x = MOVEMENT_SPEED;
+    }
+
+    this.center.x += vector.x;
+    this.center.y += vector.y;
+  }
+
+  handleAttaching () {
+    const inputter = this.game.c.inputter;
+    if (inputter.isPressed(inputter.ONE)) {
+      this.toggleAttach();
+    }
+  }
+
+  toggleAttach () {
+    if (this.attachedTo) {
+      this.attachedTo.toggleAttach(this);
+      this.attachedTo = undefined;
+    } else {
+      let nearestBlock = this.nearestBlock();
+      nearestBlock.toggleAttach(this);
+      this.attachedTo = nearestBlock;
+    }
+  }
+
+  isAttached () {
+    return this.attachedTo !== undefined;
+  }
+
+  handleMessagingAttachedBlocks () {
+    if (!this.isAttached()) {
+      return;
+    }
+
+    const inputter = this.game.c.inputter;
     if (inputter.isDown(inputter.LEFT_ARROW)) {
-      this.body.push({ x: -MOVEMENT_SPEED, y: 0 });
+      this.attachedTo.message(inputter.LEFT_ARROW);
     }
 
     if (inputter.isDown(inputter.RIGHT_ARROW)) {
-      this.body.push({ x: MOVEMENT_SPEED, y: 0 });
+      this.attachedTo.message(inputter.RIGHT_ARROW);
     }
+  }
 
-    this.body.drag(DRAG_RATIO);
+  nearestBlock () {
+    return this.game.block;
+  }
+
+  collision (other) {
+
   }
 
   draw (ctx) {
