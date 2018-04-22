@@ -14,6 +14,7 @@ class Block {
   update () {
     this.updateEngine();
     this.updateGun();
+    this.updateBullet();
   }
 
   updateEngine () {
@@ -21,14 +22,16 @@ class Block {
       return;
     }
 
-    if (this.on) {
-      const vector = Maths.vectorMultiply(Maths.angleToVector(this.angle), 2);
-
-      [this].concat(this.attached).forEach(body => {
-        body.center.x += vector.x;
-        body.center.y += vector.y;
-      });
+    if (!this.on) {
+      return;
     }
+
+    const vector = Maths.vectorMultiply(Maths.angleToVector(this.angle), 2);
+
+    [this].concat(this.attached).forEach(body => {
+      body.center.x += vector.x;
+      body.center.y += vector.y;
+    });
   }
 
   updateGun () {
@@ -36,15 +39,38 @@ class Block {
       return;
     }
 
+    if (!this.on) {
+      return;
+    }
 
   }
 
-  toggleAttached(body) {
-    if (!this.attached.includes(body)) {
-      this.attached.push(body);
-    } else {
-      this.attached.splice(this.attached.indexOf(body), 1);
+  updateBullet () {
+    if (this.type !== "bullet") {
+      return;
     }
+
+    const vector = Maths.vectorMultiply(Maths.angleToVector(this.angle), 3);
+    this.center.x += vector.x;
+    this.center.y += vector.y;
+  }
+
+  toggleAttached(other) {
+    if (!this.attached.includes(other)) {
+      this._attach(other);
+      other._attach(this);
+    } else {
+      this._detach(other);
+      other._detach(this);
+    }
+  }
+
+  _attach (other) {
+    this.attached.push(other);
+  }
+
+  _detach (other) {
+    this.attached.splice(this.attached.indexOf(other), 1);
   }
 
   message (key) {

@@ -6,6 +6,8 @@ class Player {
     this.angle = 180;
     this.center = Maths.copyPoint(settings.center);
     this.size = { x: 20, y: 20 };
+
+    this.attached = [];
   }
 
   update () {
@@ -20,7 +22,7 @@ class Player {
     if (inputter.isDown(inputter.UP_ARROW)) {
       const vector = Maths.vectorMultiply(Maths.angleToVector(this.angle), 1);
 
-      [this].concat(this.holding ? this.holding : []).forEach(body => {
+      [this].concat(this.isHolding() ? this.holding() : []).forEach(body => {
         body.center.x += vector.x;
         body.center.y += vector.y;
       });
@@ -38,38 +40,44 @@ class Player {
   handleHolding () {
     const inputter = this.game.c.inputter;
     if (inputter.isPressed(inputter.ONE)) {
-      this.toggleHolding();
+      this.toggleAttached(this.nearestBlock(this));
     }
   }
 
   handleAttaching () {
     const inputter = this.game.c.inputter;
-    if (inputter.isPressed(inputter.TWO)) {
-      this.toggleAttaching();
-    }
-  }
-
-  toggleHolding () {
-    if (this.holding) {
-      this.holding.toggleAttached(this);
-      this.holding = undefined;
-    } else {
-      let nearestBlock = this.nearestBlock(this);
-      nearestBlock.toggleAttached(this);
-      this.holding = nearestBlock;
-    }
-  }
-
-  toggleAttaching () {
-    if (!this.isHolding()) {
+    if (!inputter.isPressed(inputter.TWO) ||
+        !this.isHolding()) {
       return;
     }
 
-    this.holding.toggleAttached(this.nearestBlock(this.holding));
+    this.holding().toggleAttached(this.nearestBlock(this.holding()));
+  }
+
+  toggleAttached(other) {
+    if (!this.attached.includes(other)) {
+      this._attach(other);
+      other._attach(this);
+    } else {
+      this._detach(other);
+      other._detach(this);
+    }
+  }
+
+  _attach (other) {
+    this.attached.push(other);
+  }
+
+  _detach (other) {
+    this.attached.splice(this.attached.indexOf(other), 1);
+  }
+
+  holding () {
+    return this.attached[0];
   }
 
   isHolding () {
-    return this.holding !== undefined;
+    return this.attached[0] !== undefined;
   }
 
   handleMessagingBlockHolding () {
@@ -80,15 +88,15 @@ class Player {
     const inputter = this.game.c.inputter;
 
     if (inputter.isPressed(inputter.THREE)) {
-      this.holding.message(inputter.THREE);
+      this.holding().message(inputter.THREE);
     }
 
     if (inputter.isDown(inputter.FOUR)) {
-      this.holding.message(inputter.FOUR);
+      this.holding().message(inputter.FOUR);
     }
 
     if (inputter.isDown(inputter.FIVE)) {
-      this.holding.message(inputter.FIVE);
+      this.holding().message(inputter.FIVE);
     }
   }
 
