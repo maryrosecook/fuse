@@ -6,16 +6,22 @@ class Block {
     this.angle = 180;
     this.center = Maths.copyPoint(settings.center);
     this.size = { x: 20, y: 20 };
+    this.type = settings.type;
 
     this.attached = [];
   }
 
   update () {
     this.updateEngine();
+    this.updateGun();
   }
 
   updateEngine () {
-    if (this.attached.length > 0) {
+    if (this.type !== "engine") {
+      return;
+    }
+
+    if (this.on) {
       const vector = Maths.vectorMultiply(Maths.angleToVector(this.angle), 2);
 
       [this].concat(this.attached).forEach(body => {
@@ -25,7 +31,15 @@ class Block {
     }
   }
 
-  toggleAttach(body) {
+  updateGun () {
+    if (this.type !== "gun") {
+      return;
+    }
+
+
+  }
+
+  toggleHolding(body) {
     if (!this.attached.includes(body)) {
       this.attached.push(body);
     } else {
@@ -36,9 +50,15 @@ class Block {
   message (key) {
     const inputter = this.game.c.inputter;
 
+    if (key === inputter.THREE) {
+      this.on = !this.on;
+    }
+
     if (key === inputter.LEFT_ARROW) {
       this.angle -= 1;
-    } else if (key === inputter.RIGHT_ARROW) {
+    }
+
+    if (key === inputter.RIGHT_ARROW) {
       this.angle += 1;
     }
   }

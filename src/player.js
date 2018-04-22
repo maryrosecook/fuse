@@ -10,8 +10,8 @@ class Player {
 
   update () {
     this.handleMovement();
-    this.handleAttaching();
-    this.handleMessagingAttachedBlocks();
+    this.handleHolding();
+    this.handleMessagingBlockHolding();
   }
 
   handleMovement () {
@@ -28,12 +28,12 @@ class Player {
       vector.y = MOVEMENT_SPEED;
     }
 
-    if (!this.isAttached() &&
+    if (!this.isHolding() &&
         inputter.isDown(inputter.LEFT_ARROW)) {
       vector.x = -MOVEMENT_SPEED;
     }
 
-    if (!this.isAttached() &&
+    if (!this.isHolding() &&
         inputter.isDown(inputter.RIGHT_ARROW)) {
       vector.x = MOVEMENT_SPEED;
     }
@@ -42,40 +42,45 @@ class Player {
     this.center.y += vector.y;
   }
 
-  handleAttaching () {
+  handleHolding () {
     const inputter = this.game.c.inputter;
     if (inputter.isPressed(inputter.ONE)) {
-      this.toggleAttach();
+      this.toggleHolding();
     }
   }
 
-  toggleAttach () {
-    if (this.attachedTo) {
-      this.attachedTo.toggleAttach(this);
-      this.attachedTo = undefined;
+  toggleHolding () {
+    if (this.holding) {
+      this.holding.toggleHolding(this);
+      this.holding = undefined;
     } else {
       let nearestBlock = this.nearestBlock();
-      nearestBlock.toggleAttach(this);
-      this.attachedTo = nearestBlock;
+      nearestBlock.toggleHolding(this);
+      this.holding = nearestBlock;
     }
   }
 
-  isAttached () {
-    return this.attachedTo !== undefined;
+  isHolding () {
+    return this.holding !== undefined;
   }
 
-  handleMessagingAttachedBlocks () {
-    if (!this.isAttached()) {
+  handleMessagingBlockHolding () {
+    if (!this.isHolding()) {
       return;
     }
 
     const inputter = this.game.c.inputter;
+
+    if (inputter.isPressed(inputter.THREE)) {
+      this.holding.message(inputter.THREE);
+    }
+
     if (inputter.isDown(inputter.LEFT_ARROW)) {
-      this.attachedTo.message(inputter.LEFT_ARROW);
+      this.holding.message(inputter.LEFT_ARROW);
     }
 
     if (inputter.isDown(inputter.RIGHT_ARROW)) {
-      this.attachedTo.message(inputter.RIGHT_ARROW);
+      this.holding.message(inputter.RIGHT_ARROW);
     }
   }
 
@@ -93,5 +98,16 @@ class Player {
                  this.center.y - this.size.y / 2,
                  this.size.x,
                  this.size.y);
+
+    if (this.isHolding()) {
+      ctx.restore();
+      ctx.strokeStyle = "#fa0";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(this.center.x, this.center.y);
+      ctx.lineTo(this.holding.center.x, this.holding.center.y);
+      ctx.closePath();
+      ctx.stroke();
+    }
   }
 };
