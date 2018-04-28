@@ -1,12 +1,14 @@
 class Block {
   constructor (game, settings) {
     this.game = game;
-    this.color = "#fff";
     this.zindex = 0;
-    this.angle = 180;
+    this.angle = settings.angle !== undefined ? settings.angle : 180;
+    this.speed = settings.speed !== undefined ? settings.speed : 2;
     this.center = Maths.copyPoint(settings.center);
-    this.size = { x: 20, y: 20 };
+    this.size = { x: 15, y: 15 };
     this.type = settings.type;
+    this.color = this.calculateColor();
+    this.on = settings.on === true ? true : false;
 
     this.attached = [];
   }
@@ -14,7 +16,7 @@ class Block {
   update () {
     this.updateEngine();
     this.updateGun();
-    this.updateBullet();
+    this.updateBomb();
   }
 
   updateEngine () {
@@ -26,7 +28,8 @@ class Block {
       return;
     }
 
-    const vector = Maths.vectorMultiply(Maths.angleToVector(this.angle), 2);
+    const vector = Maths.vectorMultiply(Maths.angleToVector(this.angle),
+                                        this.speed);
 
     [this].concat(this.attached).forEach(body => {
       body.center.x += vector.x;
@@ -43,20 +46,78 @@ class Block {
       return;
     }
 
-  }
+    if (this.attached.length === 0) {
+      this.turnTowards(this.game.player);
+    }
 
-  updateBullet () {
-    if (this.type !== "bullet") {
+    if (this.time === undefined) {
+      this.time = Date.now();
       return;
     }
 
-    const vector = Maths.vectorMultiply(Maths.angleToVector(this.angle), 3);
-    this.center.x += vector.x;
-    this.center.y += vector.y;
+    if (Date.now() - this.time < 1000) {
+      return;
+    }
+
+    this.time = Date.now();
+    this.game.createMissile(
+      Maths.vectorAdd(
+        this.center,
+        Maths.vectorMultiply(
+          Maths.angleToVector(this.angle),
+          this.size.x)),
+      this.angle);
+  }
+
+  turnTowards (target) {
+    let angleDifference = Maths.angleBetween(
+      this.angle,
+      Maths.vectorToAngle(Maths.vectorTo(target.center, this.center)));
+
+    this.angle += angleDifference / Math.abs(angleDifference) * 0.8;
+  }
+
+  updateBomb () {
+    if (this.type !== "bomb") {
+      return;
+    }
+  }
+
+  warpTo (point, other) {
+    this.center = point;
+    this.angle = other.angle;
+  }
+
+  collision (other) {
+    if ((this.type !== "bomb" &&
+         this.type !== "engine") ||
+        this.isAttached(other)) {
+      return;
+    }
+
+    other.destroy([]);
+    this.destroy([]);
+  }
+
+  destroy (cascades) {
+    if (cascades.includes(this)) {
+      return;
+    }
+
+    cascades.push(this);
+    this.game.c.entities.destroy(this);
+
+    if (this.type === "bomb") {
+      this.attached.forEach(block => block.destroy(cascades));
+    }
+  }
+
+  isAttached(other) {
+    return this.attached.includes(other);
   }
 
   toggleAttached(other) {
-    if (!this.attached.includes(other)) {
+    if (!this.isAttached(other)) {
       this._attach(other);
       other._attach(this);
     } else {
@@ -66,11 +127,38 @@ class Block {
   }
 
   _attach (other) {
+    this.warpTo(Maths.copyPoint(this.closestAttachPoint(other)),
+                other);
+
     this.attached.push(other);
   }
 
   _detach (other) {
     this.attached.splice(this.attached.indexOf(other), 1);
+  }
+
+  attachablePoints() {
+    return [
+      Maths.vectorMultiply(Maths.angleToVector(this.angle + 0),
+                           this.size.x),
+      Maths.vectorMultiply(Maths.angleToVector(this.angle + 90),
+                           this.size.x),
+      Maths.vectorMultiply(Maths.angleToVector(this.angle + 180),
+                           this.size.x),
+      Maths.vectorMultiply(Maths.angleToVector(this.angle + 270),
+                           this.size.x)
+
+    ].map(point => {
+      return Maths.vectorAdd(point, this.center);
+    });
+  }
+
+  closestAttachPoint(other) {
+    return other.attachablePoints()
+      .sort((point1, point2) => {
+        return Maths.distance(point1, this.center) -
+          Maths.distance(point2, this.center);
+      })[0];
   }
 
   message (key) {
@@ -108,7 +196,7 @@ class Block {
     // draw attachment lines
     this.attached.forEach(block => {
       ctx.restore();
-      ctx.strokeStyle = "#fa0";
+      ctx.strokeStyle = "#fff";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(this.center.x, this.center.y);
@@ -116,5 +204,13 @@ class Block {
       ctx.closePath();
       ctx.stroke();
     });
+  }
+
+  calculateColor() {
+    return {
+      gun: "gray",
+      bomb: "red",
+      engine: "orange"
+    }[this.type];
   }
 };

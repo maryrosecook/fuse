@@ -5,7 +5,7 @@ class Player {
     this.zindex = 0;
     this.angle = 180;
     this.center = Maths.copyPoint(settings.center);
-    this.size = { x: 20, y: 20 };
+    this.size = { x: 15, y: 15 };
 
     this.attached = [];
   }
@@ -18,30 +18,59 @@ class Player {
   }
 
   handleMovement () {
+    if (this.isHolding() &&
+        this.holding().attached.length > 1) {
+      return;
+    }
+
     const inputter = this.game.c.inputter;
     if (inputter.isDown(inputter.UP_ARROW)) {
       const vector = Maths.vectorMultiply(Maths.angleToVector(this.angle), 1);
 
-      [this].concat(this.isHolding() ? this.holding() : []).forEach(body => {
-        body.center.x += vector.x;
-        body.center.y += vector.y;
-      });
+      [this].concat(this.isHolding() ? this.holding() : [])
+        .forEach(body => {
+          body.center.x += vector.x;
+          body.center.y += vector.y;
+        });
     }
 
     if (inputter.isDown(inputter.LEFT_ARROW)) {
       this.angle -= 3;
+      this.rotateHoldingToMatch(-3);
     }
 
     if (inputter.isDown(inputter.RIGHT_ARROW)) {
       this.angle += 3;
+      this.rotateHoldingToMatch(3);
     }
+  }
+
+  rotateHoldingToMatch (change) {
+    if (!this.isHolding()) {
+      return;
+    }
+
+    this.holding().angle = this.angle;
+    this.holding().center = Maths.rotatePointAroundCenter(
+      this.holding().center, this.center, change);
   }
 
   handleHolding () {
     const inputter = this.game.c.inputter;
+    if (!inputter.isPressed(inputter.ONE)) {
+      return;
+    }
+
     if (inputter.isPressed(inputter.ONE)) {
+      if (this.isHolding()) {
+        this.toggleAttached(this.holding());
+        return;
+      }
+
       this.toggleAttached(this.nearestBlock(this));
     }
+
+
   }
 
   handleAttaching () {
@@ -64,12 +93,53 @@ class Player {
     }
   }
 
+  destroy () {
+    if (this.isHolding()) {
+      const other = this.holding();
+      this._detach(other);
+      other._detach(this);
+    }
+
+    this.game.c.entities.destroy(this);
+  }
+
+  warpTo (point, other) {
+    this.center = point;
+    this.angle = other.angle;
+  }
+
   _attach (other) {
+    this.warpTo(Maths.copyPoint(this.closestAttachPoint(other)),
+                other);
     this.attached.push(other);
   }
 
   _detach (other) {
     this.attached.splice(this.attached.indexOf(other), 1);
+  }
+
+  attachablePoints() {
+    return [
+      Maths.vectorMultiply(Maths.angleToVector(this.angle + 0),
+                           this.size.x),
+      Maths.vectorMultiply(Maths.angleToVector(this.angle + 90),
+                           this.size.x),
+      Maths.vectorMultiply(Maths.angleToVector(this.angle + 180),
+                           this.size.x),
+      Maths.vectorMultiply(Maths.angleToVector(this.angle + 270),
+                           this.size.x)
+
+    ].map(point => {
+      return Maths.vectorAdd(point, this.center);
+    });
+  }
+
+  closestAttachPoint(other) {
+    return other.attachablePoints()
+      .sort((point1, point2) => {
+        return Maths.distance(point1, this.center) -
+          Maths.distance(point2, this.center);
+      })[0];
   }
 
   holding () {
@@ -110,14 +180,23 @@ class Player {
   }
 
   draw (ctx) {
-    ctx.fillStyle = this.color;
-    ctx.fillRect(this.center.x - this.size.x / 2,
-                 this.center.y - this.size.y / 2,
-                 this.size.x,
-                 this.size.y);
+    ctx.lineWidth = 2;
+
+    if (this.isHolding()) {
+      ctx.fillStyle = this.color;
+      ctx.fillRect(this.center.x - this.size.x / 2,
+                   this.center.y - this.size.y / 2,
+                   this.size.x,
+                   this.size.y);
+    } else {
+      ctx.strokeStyle = this.color;
+      ctx.strokeRect(this.center.x - this.size.x / 2,
+                     this.center.y - this.size.y / 2,
+                     this.size.x,
+                     this.size.y);
+    }
 
     ctx.strokeStyle = "#000";
-    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(this.center.x, this.center.y);
     ctx.lineTo(this.center.x, this.center.y - this.size.y / 2);

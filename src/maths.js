@@ -107,16 +107,30 @@
       return angle;
     },
 
+    rotatePointAroundCenter: function(point, center, angleDegrees) {
+      let angle = this.degToRad(angleDegrees);
+      let originPoint = this.vectorAdd(
+        this.copyPoint(point),
+        { x: -center.x, y: -center.y });
+
+      let rotatedOriginPoint = {
+        x: originPoint.x * Math.cos(angle) -
+          originPoint.y * Math.sin(angle),
+        y: originPoint.y * Math.cos(angle) +
+          originPoint.x * Math.sin(angle)
+      };
+
+      return Maths.vectorAdd(rotatedOriginPoint, center);
+    },
+
     distance: function(pos1, pos2) {
       return Math.sqrt(Math.pow(pos1.x - pos2.x, 2) + Math.pow(pos1.y - pos2.y, 2));
     },
 
-    // returns magnitude of passed vector
     magnitude: function(vector) {
       return Math.sqrt(vector.x * vector.x + vector.y * vector.y);
     },
 
-    // returns unit vector of passed vector
     unitVector: function(vector) {
       var magnitude = this.magnitude(vector);
       if (magnitude === 0) {
@@ -136,9 +150,23 @@
       };
     },
 
-    // returns dot product of two passed vectors
+    vectorAdd: function(vector1, vector2) {
+      return {
+        x: vector1.x + vector2.x,
+        y: vector1.y + vector2.y
+      };
+    },
+
     dotProduct: function(vector1, vector2) {
       return vector1.x * vector2.x + vector1.y * vector2.y;
+    },
+
+    angleBetween: function(angle1Degrees, angle2Degrees) {
+      let angle1 = this.degToRad(angle1Degrees);
+      let angle2 = this.degToRad(angle2Degrees);
+
+      return this.radToDeg(Math.atan2(
+        Math.sin(angle1 - angle2), Math.cos(angle1 - angle2)));
     },
 
     floor: function(pos) {
